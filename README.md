@@ -1,26 +1,132 @@
-# https://github.com/docker-library/drupal
+# Deploy Drupal with PostgreSQL to AWS ECS
 
-## Maintained by: [the Docker Community](https://github.com/docker-library/drupal) (*not* the Drupal Community or the Drupal Security Team)
+### Docker Compose config (AWS ECS deployment):
+```yaml
+# Drupal with PostgreSQL in AWS ECS
+#
+# During initial Drupal setup:
+# Database type: PostgreSQL
+# Database name: postgres
+# Database username: postgres
+# Database password: [AWS Secret]
+# ADVANCED OPTIONS; Database host: postgres
 
-This is the Git repo of the [Docker "Official Image"](https://github.com/docker-library/official-images#what-are-official-images) for [`drupal`](https://hub.docker.com/_/drupal/) (not to be confused with any official `drupal` image provided by `drupal` upstream). See [the Docker Hub page](https://hub.docker.com/_/drupal/) for the full readme on how to use this Docker image and for information regarding contributing and issues.
+# x-aws-vpc: ECS VPC ID
+# x-aws-cluster: ECS Cluster Name  
+# Also EC2 network (Security Group ID) & AWS secret could be explicitly specified below
 
-The [full image description on Docker Hub](https://hub.docker.com/_/drupal/) is generated/maintained over in [the docker-library/docs repository](https://github.com/docker-library/docs), specifically in [the `drupal` directory](https://github.com/docker-library/docs/tree/master/drupal).
+version: '3.1'
 
-## See a change merged here that doesn't show up on Docker Hub yet?
+x-aws-vpc: "vpc-xxxxxxxxxxxxxxx"
+x-aws-cluster: "your cluster name"
 
-For more information about the full official images change lifecycle, see [the "An image's source changed in Git, now what?" FAQ entry](https://github.com/docker-library/faq#an-images-source-changed-in-git-now-what).
+services:
 
-For outstanding `drupal` image PRs, check [PRs with the "library/drupal" label on the official-images repository](https://github.com/docker-library/official-images/labels/library%2Fdrupal). For the current "source of truth" for [`drupal`](https://hub.docker.com/_/drupal/), see [the `library/drupal` file in the official-images repository](https://github.com/docker-library/official-images/blob/master/library/drupal).
+  drupal:
+    image: drupal:9.4-apache
+    ports:
+      - 80:80
+    networks:
+      - ec2_network
+    volumes:
+      - modules:/var/www/html/modules
+      - profiles:/var/www/html/profiles
+      - themes:/var/www/html/themes
+      - sites:/var/www/html/sites
+    restart: always
+
+  postgres:
+    image: postgres:10
+    networks:
+      - ec2_network
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    secrets:
+      - postgres_password
+    environment:
+       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    restart: always
+
+networks:
+  ec2_network:
+    external: true
+    name: "sg-xxxxxxxxxxxxxx"
+
+volumes:
+  modules:
+  profiles:
+  themes:
+  sites:
+  pgdata:
+
+secrets:
+  postgres_password:
+    name: "arn:aws:secretsmanager:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    external: true
+
+x-aws-cloudformation:
+  Resources:
+    DrupalTCP80TargetGroup:
+      Properties:
+        HealthCheckPath: /
+        Matcher:
+          HttpCode: 200-499
+```
+
+### Deploy to AWS ECS:
+```console
+docker --context myecscontext compose -f aws-docker-compose.yaml up -d
+```
 
 ---
 
--	[![build status badge](https://img.shields.io/github/workflow/status/docker-library/drupal/GitHub%20CI/master?label=GitHub%20CI)](https://github.com/docker-library/drupal/actions?query=workflow%3A%22GitHub+CI%22+branch%3Amaster)
--	[![build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/update.sh/job/drupal.svg?label=Automated%20update.sh)](https://doi-janky.infosiftr.net/job/update.sh/job/drupal/)
+### Docker Compose config (local deployment):
 
-| Build | Status | Badges | (per-arch) |
-|:-:|:-:|:-:|:-:|
-| [![amd64 build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/amd64/job/drupal.svg?label=amd64)](https://doi-janky.infosiftr.net/job/multiarch/job/amd64/job/drupal/) | [![arm32v5 build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/arm32v5/job/drupal.svg?label=arm32v5)](https://doi-janky.infosiftr.net/job/multiarch/job/arm32v5/job/drupal/) | [![arm32v6 build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/arm32v6/job/drupal.svg?label=arm32v6)](https://doi-janky.infosiftr.net/job/multiarch/job/arm32v6/job/drupal/) | [![arm32v7 build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/arm32v7/job/drupal.svg?label=arm32v7)](https://doi-janky.infosiftr.net/job/multiarch/job/arm32v7/job/drupal/) |
-| [![arm64v8 build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/arm64v8/job/drupal.svg?label=arm64v8)](https://doi-janky.infosiftr.net/job/multiarch/job/arm64v8/job/drupal/) | [![i386 build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/i386/job/drupal.svg?label=i386)](https://doi-janky.infosiftr.net/job/multiarch/job/i386/job/drupal/) | [![mips64le build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/mips64le/job/drupal.svg?label=mips64le)](https://doi-janky.infosiftr.net/job/multiarch/job/mips64le/job/drupal/) | [![ppc64le build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/ppc64le/job/drupal.svg?label=ppc64le)](https://doi-janky.infosiftr.net/job/multiarch/job/ppc64le/job/drupal/) |
-| [![s390x build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/multiarch/job/s390x/job/drupal.svg?label=s390x)](https://doi-janky.infosiftr.net/job/multiarch/job/s390x/job/drupal/) | [![put-shared build status badge](https://img.shields.io/jenkins/s/https/doi-janky.infosiftr.net/job/put-shared/job/light/job/drupal.svg?label=put-shared)](https://doi-janky.infosiftr.net/job/put-shared/job/light/job/drupal/) |
+```yaml
+# Drupal with PostgreSQL
+#
+# Access via "http://localhost:8080"
+#   (or "http://$(docker-machine ip):8080" if using docker-machine)
+#
+# During initial Drupal setup,
+# Database type: PostgreSQL
+# Database name: postgres
+# Database username: postgres
+# Database password: example
+# ADVANCED OPTIONS; Database host: postgres
 
-<!-- THIS FILE IS GENERATED BY https://github.com/docker-library/docs/blob/master/generate-repo-stub-readme.sh -->
+version: '3.1'
+
+services:
+
+  drupal:
+    image: drupal:9.4-apache
+    ports:
+      - 80:80
+    volumes:
+      - modules:/var/www/html/modules
+      - profiles:/var/www/html/profiles
+      - themes:/var/www/html/themes
+      - sites:/var/www/html/sites
+    restart: always
+
+  postgres:
+    image: postgres:10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+       POSTGRES_PASSWORD: example
+    restart: always
+
+volumes:
+  modules:
+  profiles:
+  themes:
+  sites:
+  pgdata:
+```
+
+### Deploy locally:
+```console
+docker compose -f local-docker-compose.yaml up
+```
