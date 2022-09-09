@@ -1,0 +1,46 @@
+# Drupal with PostgreSQL in AWS ECS
+#
+# During initial Drupal setup:
+# Database type: PostgreSQL
+# Database name: postgres
+# Database username: postgres
+# Database password: [AWS Secret]
+# ADVANCED OPTIONS; Database host: postgres
+
+# x-aws-vpc: ECS VPC ID
+# x-aws-cluster: ECS Cluster Name  
+# Also EC2 network (Security Group ID) & AWS secret could be explicitly specified below
+
+version: '3.1'
+
+x-aws-vpc: "vpc-0c1ae16e1a4884030"
+x-aws-cluster: "drupal-cluster"
+
+services:
+
+  drupal:
+    image: drupal:9.4-apache
+    ports:
+      - 80:80
+    volumes:
+      - modules:/var/www/html/modules
+      - profiles:/var/www/html/profiles
+      - themes:/var/www/html/themes
+      - sites:/var/www/html/sites
+    restart: always
+
+  postgres:
+    image: postgres:10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+       POSTGRES_PASSWORD: "example"
+    restart: always
+
+volumes:
+  modules:
+  profiles:
+  themes:
+  sites:
+  pgdata:
+

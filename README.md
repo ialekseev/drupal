@@ -77,6 +77,7 @@ x-aws-cloudformation:
 ```console
 docker --context myecscontext compose -f aws-docker-compose.yaml up -d
 ```
+Note: Running in detached mode "-d" is needed becase of the open issue: https://github.com/docker/compose-cli/issues/2086
 
 ---
 
@@ -130,3 +131,4 @@ volumes:
 ```console
 docker compose -f local-docker-compose.yaml up
 ```
+Note: Running in detached mode "-d" is needed becase of the open issue: https://github.com/docker/compose-cli/issues/2086
